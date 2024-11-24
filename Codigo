@@ -1,0 +1,692 @@
+CREATE TABLE IF NOT EXISTS Usuarios (
+    Region TEXT PRIMARY KEY,
+    Gerente TEXT NOT NULL
+);
+CREATE TABLE Ordenes (
+    ID_de_fila SERIAL PRIMARY KEY,  
+    Prioridad_de_pedido TEXT NOT NULL,  
+    Descuento DECIMAL(5, 2) NOT NULL,  
+    Precio_unitario DECIMAL(10, 2) NOT NULL,  
+    Costo_de_envio DECIMAL(10, 2) NOT NULL, 
+    ID_de_cliente INT NOT NULL, 
+    Nombre_del_cliente TEXT NOT NULL, 
+    Modo_de_envio TEXT NOT NULL, 
+    Segmento_de_clientes TEXT NOT NULL,  
+    Categoria_de_producto TEXT NOT NULL,  
+    Subcategoria_de_producto TEXT NOT NULL, 
+    Contenedor_de_producto TEXT,  
+    Nombre_del_producto TEXT NOT NULL,  
+    Margen_base_del_producto DECIMAL(10, 2),  
+    Pais TEXT,  
+    Region TEXT REFERENCES Usuarios(Region),  
+    Estado_o_Provincia TEXT NOT NULL,  
+    Ciudad TEXT NOT NULL,  
+    Codigo_Postal INT NOT NULL,  
+    Fecha_del_pedido DATE NOT NULL,  
+    Fecha_de_envio DATE NOT NULL, 
+    Ganancia DECIMAL(10, 4) NOT NULL,  
+    Cantidad_pedida_nueva INT NOT NULL,  
+    Ventas DECIMAL(10, 2) NOT NULL,  
+    ID_de_pedido INT NOT NULL,  
+    CONSTRAINT pedido_fila_unica UNIQUE (ID_de_pedido, ID_de_fila)  
+);
+CREATE TABLE Dev (
+    ID_de_pedido INT NOT NULL,  
+    ID_de_fila INT NOT NULL,    
+    Estado TEXT NOT NULL,  
+    CONSTRAINT fk_pedido_fila FOREIGN KEY (ID_de_pedido, ID_de_fila) 
+        REFERENCES Ordenes(ID_de_pedido, ID_de_fila) 
+);
+1//////
+CREATE VIEW Vista_Ordenes_Dev_Usuarios AS
+SELECT 
+    o.ID_de_fila, 
+    o.Prioridad_de_pedido, 
+    o.Nombre_del_cliente, 
+    o.Region, 
+    o.Estado_o_Provincia, 
+    o.Ciudad, 
+    d.Estado AS Estado_Dev, 
+    u.Gerente
+FROM 
+    Ordenes o
+JOIN 
+    Dev d ON o.ID_de_pedido = d.ID_de_pedido AND o.ID_de_fila = d.ID_de_fila
+JOIN 
+    Usuarios u ON o.Region = u.Region;
+2/////
+CREATE OR REPLACE PROCEDURE insertar_orden(
+    p_prioridad_de_pedido TEXT,
+    p_descuento DECIMAL(5,2),
+    p_precio_unitario DECIMAL(10,2),
+    p_costo_de_envio DECIMAL(10,2),
+    p_id_de_cliente INT,
+    p_nombre_del_cliente TEXT,
+    p_modo_de_envio TEXT,
+    p_segmento_de_clientes TEXT,
+    p_categoria_de_producto TEXT,
+    p_subcategoria_de_producto TEXT,
+    p_contenedor_de_producto TEXT,
+    p_nombre_del_producto TEXT,
+    p_margen_base_del_producto DECIMAL(10,2),
+    p_pais TEXT,
+    p_region TEXT,
+    p_estado_o_provincia TEXT,
+    p_ciudad TEXT,
+    p_codigo_postal INT,
+    p_fecha_del_pedido DATE,
+    p_fecha_de_envio DATE,
+    p_ganancia DECIMAL(10,4),
+    p_cantidad_pedida_nueva INT,
+    p_ventas DECIMAL(10,2),
+    p_id_de_pedido INT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    INSERT INTO Ordenes (
+        Prioridad_de_pedido,
+        Descuento,
+        Precio_unitario,
+        Costo_de_envio,
+        ID_de_cliente,
+        Nombre_del_cliente,
+        Modo_de_envio,
+        Segmento_de_clientes,
+        Categoria_de_producto,
+        Subcategoria_de_producto,
+        Contenedor_de_producto,
+        Nombre_del_producto,
+        Margen_base_del_producto,
+        Pais,
+        Region,
+        Estado_o_Provincia,
+        Ciudad,
+        Codigo_Postal,
+        Fecha_del_pedido,
+        Fecha_de_envio,
+        Ganancia,
+        Cantidad_pedida_nueva,
+        Ventas,
+        ID_de_pedido
+    ) 
+    VALUES (
+        p_prioridad_de_pedido,
+        p_descuento,
+        p_precio_unitario,
+        p_costo_de_envio,
+        p_id_de_cliente,
+        p_nombre_del_cliente,
+        p_modo_de_envio,
+        p_segmento_de_clientes,
+        p_categoria_de_producto,
+        p_subcategoria_de_producto,
+        p_contenedor_de_producto,
+        p_nombre_del_producto,
+        p_margen_base_del_producto,
+        p_pais,
+        p_region,
+        p_estado_o_provincia,
+        p_ciudad,
+        p_codigo_postal,
+        p_fecha_del_pedido,
+        p_fecha_de_envio,
+        p_ganancia,
+        p_cantidad_pedida_nueva,
+        p_ventas,
+        p_id_de_pedido
+    );
+END;
+$$;
+CALL insertar_orden(
+    'Alta', 
+    15.50, 
+    100.00, 
+    10.00, 
+    123, 
+    'Juan Pérez', 
+    'Terrestre', 
+    'Retail', 
+    'Electrónica', 
+    'Celulares', 
+    'Caja', 
+    'iPhone 14', 
+    50.00, 
+    'México', 
+    'West', 
+    'CDMX', 
+    'Ciudad de México', 
+    10000, 
+    '2024-11-01', 
+    '2024-11-03', 
+    200.00, 
+    2, 
+    300.00, 
+    101
+);
+CREATE OR REPLACE PROCEDURE insertar_dev(
+    p_id_de_pedido INT,
+    p_id_de_fila INT,
+    p_estado TEXT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    INSERT INTO Dev (ID_de_pedido, ID_de_fila, Estado)
+    VALUES (p_id_de_pedido, p_id_de_fila, p_estado);
+END;
+$$;
+CALL insertar_dev(101, 1, 'Pendiente');
+3////////////
+CREATE OR REPLACE FUNCTION eliminar_orden(p_id_de_pedido INT, p_id_de_fila INT)
+RETURNS VOID AS $$
+BEGIN
+    DELETE FROM Ordenes
+    WHERE ID_de_pedido = p_id_de_pedido AND ID_de_fila = p_id_de_fila;
+    IF NOT FOUND THEN
+        RAISE NOTICE 'No se encontró la orden con ID_de_pedido = % y ID_de_fila = %.', p_id_de_pedido, p_id_de_fila;
+    END IF;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION 'Error al eliminar la orden: %', SQLERRM;
+END;
+$$ LANGUAGE plpgsql;
+ALTER TABLE Dev
+DROP CONSTRAINT fk_pedido_fila,
+ADD CONSTRAINT fk_pedido_fila FOREIGN KEY (ID_de_pedido, ID_de_fila)
+REFERENCES Ordenes(ID_de_pedido, ID_de_fila)
+ON DELETE CASCADE;
+SELECT eliminar_orden(101, 1);
+4///////////
+CREATE OR REPLACE PROCEDURE actualizar_orden(
+    p_id_de_pedido INT,
+    p_id_de_fila INT,
+    p_prioridad_de_pedido TEXT,
+    p_descuento DECIMAL(5,2),
+    p_precio_unitario DECIMAL(10,2),
+    p_costo_de_envio DECIMAL(10,2),
+    p_id_de_cliente INT,
+    p_nombre_del_cliente TEXT,
+    p_modo_de_envio TEXT,
+    p_segmento_de_clientes TEXT,
+    p_categoria_de_producto TEXT,
+    p_subcategoria_de_producto TEXT,
+    p_contenedor_de_producto TEXT,
+    p_nombre_del_producto TEXT,
+    p_margen_base_del_producto DECIMAL(10,2),
+    p_pais TEXT,
+    p_region TEXT,
+    p_estado_o_provincia TEXT,
+    p_ciudad TEXT,
+    p_codigo_postal INT,
+    p_fecha_del_pedido DATE,
+    p_fecha_de_envio DATE,
+    p_ganancia DECIMAL(10,4),
+    p_cantidad_pedida_nueva INT,
+    p_ventas DECIMAL(10,2)
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    UPDATE Ordenes
+    SET 
+        Prioridad_de_pedido = p_prioridad_de_pedido,
+        Descuento = p_descuento,
+        Precio_unitario = p_precio_unitario,
+        Costo_de_envio = p_costo_de_envio,
+        ID_de_cliente = p_id_de_cliente,
+        Nombre_del_cliente = p_nombre_del_cliente,
+        Modo_de_envio = p_modo_de_envio,
+        Segmento_de_clientes = p_segmento_de_clientes,
+        Categoria_de_producto = p_categoria_de_producto,
+        Subcategoria_de_producto = p_subcategoria_de_producto,
+        Contenedor_de_producto = p_contenedor_de_producto,
+        Nombre_del_producto = p_nombre_del_producto,
+        Margen_base_del_producto = p_margen_base_del_producto,
+        Pais = p_pais,
+        Region = p_region,
+        Estado_o_Provincia = p_estado_o_provincia,
+        Ciudad = p_ciudad,
+        Codigo_Postal = p_codigo_postal,
+        Fecha_del_pedido = p_fecha_del_pedido,
+        Fecha_de_envio = p_fecha_de_envio,
+        Ganancia = p_ganancia,
+        Cantidad_pedida_nueva = p_cantidad_pedida_nueva,
+        Ventas = p_ventas
+    WHERE ID_de_pedido = p_id_de_pedido AND ID_de_fila = p_id_de_fila;
+    IF NOT FOUND THEN
+        RAISE NOTICE 'No se encontró la orden con ID_de_pedido = % y ID_de_fila = %.', p_id_de_pedido, p_id_de_fila;
+    END IF;
+END;
+$$;
+CALL actualizar_orden(
+    101, 
+    2, 
+    'Alta', 
+    20.00, 
+    120.00, 
+    15.00, 
+    123, 
+    'Juan Pérez', 
+    'Terrestre', 
+    'Retail', 
+    'Electrónica', 
+    'Smartphones', 
+    'Caja', 
+    'iPhone 12', 
+    55.00, 
+    'Peru', 
+    'West', 
+    'CDMX', 
+    'Lima', 
+    10000, 
+    '2024-11-01', 
+    '2024-11-03', 
+    210.00, 
+    3, 
+    320.00
+);
+5////////////
+CREATE OR REPLACE FUNCTION calcular_ganancia() 
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.Ganancia := (NEW.Precio_unitario * NEW.Cantidad_pedida_nueva) - NEW.Costo_de_envio;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER trigger_calcular_ganancia
+BEFORE INSERT OR UPDATE ON Ordenes
+FOR EACH ROW
+EXECUTE FUNCTION calcular_ganancia();
+INSERT INTO Ordenes (
+    Prioridad_de_pedido,
+    Descuento,
+    Precio_unitario,
+    Costo_de_envio,
+    ID_de_cliente,
+    Nombre_del_cliente,
+    Modo_de_envio,
+    Segmento_de_clientes,
+    Categoria_de_producto,
+    Subcategoria_de_producto,
+    Contenedor_de_producto,
+    Nombre_del_producto,
+    Margen_base_del_producto,
+    Pais,
+    Region,
+    Estado_o_Provincia,
+    Ciudad,
+    Codigo_Postal,
+    Fecha_del_pedido,
+    Fecha_de_envio,
+    Ganancia,  -- Esta columna no se define explícitamente porque el trigger la calcula
+    Cantidad_pedida_nueva,
+    Ventas,
+    ID_de_pedido
+)
+VALUES (
+    'Alta', 
+    15.50, 
+    100.00, 
+    10.00, 
+    123, 
+    'Juan Pérez', 
+    'Terrestre', 
+    'Retail', 
+    'Electrónica', 
+    'Celulares', 
+    'Caja', 
+    'iPhone 14', 
+    50.00, 
+    'México', 
+    'West', 
+    'CDMX', 
+    'Ciudad de México', 
+    10000, 
+    '2024-11-01', 
+    '2024-11-03', 
+    NULL,  -- El valor de Ganancia será calculado por el trigger
+    2, 
+    300.00, 
+    101
+);
+6//////////
+CREATE OR REPLACE FUNCTION log_nueva_orden()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO Log_Ordenes (ID_de_pedido, Detalle)
+    VALUES (NEW.ID_de_pedido, 'Nueva orden insertada: ' || NEW.Nombre_del_cliente);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER trigger_log_nueva_orden
+AFTER INSERT ON Ordenes
+FOR EACH ROW
+EXECUTE FUNCTION log_nueva_orden();
+7/////////////
+CREATE OR REPLACE FUNCTION log_eliminar_orden()
+RETURNS TRIGGER AS $$
+BEGIN
+    DELETE FROM Log_Ordenes WHERE ID_de_pedido = OLD.ID_de_pedido;
+    RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER trigger_log_eliminar_orden
+AFTER DELETE ON Ordenes
+FOR EACH ROW
+EXECUTE FUNCTION log_eliminar_orden();
+8////////////
+CREATE OR REPLACE FUNCTION log_actualizar_orden()
+RETURNS TRIGGER AS $$
+BEGIN
+    UPDATE Log_Ordenes
+    SET Detalle = 'Orden actualizada: ' || NEW.Nombre_del_cliente || ' (' || NEW.Prioridad_de_pedido || ')',
+        Fecha_de_log = CURRENT_TIMESTAMP
+    WHERE ID_de_pedido = NEW.ID_de_pedido;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER trigger_log_actualizar_orden
+AFTER UPDATE ON Ordenes
+FOR EACH ROW
+EXECUTE FUNCTION log_actualizar_orden();
+9///////////////
+CREATE OR REPLACE FUNCTION verificar_datos_orden()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Verificar que el descuento no supere el 50%
+    IF NEW.Descuento > 50 THEN
+        RAISE EXCEPTION 'El descuento no puede ser mayor al 50%. Descuento actual: %', NEW.Descuento;
+    END IF;
+
+    -- Verificar que el precio unitario no sea negativo
+    IF NEW.Precio_unitario < 0 THEN
+        RAISE EXCEPTION 'El precio unitario no puede ser negativo. Precio actual: %', NEW.Precio_unitario;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+CREATE TRIGGER trigger_verificar_datos_orden
+BEFORE INSERT OR UPDATE ON Ordenes
+FOR EACH ROW
+EXECUTE FUNCTION verificar_datos_orden();
+10/////////////
+-- Crear usuarios de PostgreSQL
+CREATE USER Christhian WITH PASSWORD 'password1';
+CREATE USER Jeison WITH PASSWORD 'password2';
+CREATE USER Pedro WITH PASSWORD 'password3';
+CREATE USER Jazztin WITH PASSWORD 'password4';
+-- Asignar privilegios a los usuarios
+GRANT ALL PRIVILEGES ON DATABASE BDifd TO Christhian;
+GRANT ALL PRIVILEGES ON DATABASE BDifd TO Jeison;
+GRANT ALL PRIVILEGES ON DATABASE BDifd TO Pedro;
+GRANT ALL PRIVILEGES ON DATABASE BDifd TO Jazztin;
+11/////////////////
+-- Crear la nueva base de datos a partir de la existente
+CREATE DATABASE BDifd_copy WITH TEMPLATE BDifd;
+
+-- Asignar privilegios a los usuarios
+GRANT ALL PRIVILEGES ON DATABASE BDifd_copy TO Christhian;
+GRANT ALL PRIVILEGES ON DATABASE BDifd_copy TO Jeison;
+GRANT ALL PRIVILEGES ON DATABASE BDifd_copy TO Pedro;
+GRANT ALL PRIVILEGES ON DATABASE BDifd_copy TO Jazztin;
+12////////////////
+
+CREATE DATABASE copia_de_seguridad WITH TEMPLATE BDifd;
+
+-- Asignar privilegios a los usuarios
+GRANT ALL PRIVILEGES ON DATABASE copia_de_seguridad TO Christhian;
+GRANT ALL PRIVILEGES ON DATABASE copia_de_seguridad TO Jeison;
+GRANT ALL PRIVILEGES ON DATABASE copia_de_seguridad TO Pedro;
+GRANT ALL PRIVILEGES ON DATABASE copia_de_seguridad TO Jazztin;
+13/////////////
+-- Paso 1: Instalar la Extensión pgcrypto
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- Paso 2: Crear la Tabla con Columnas Encriptadas
+CREATE TABLE IF NOT EXISTS Usuarios (
+    Region TEXT PRIMARY KEY,
+    Gerente BYTEA NOT NULL
+);
+
+-- Paso 3: Insertar Datos Encriptados en la Tabla
+INSERT INTO Usuarios (Region, Gerente) VALUES
+    ('Norte', pgp_sym_encrypt('Carlos', 'mi_llave_secreta')),
+    ('Sur', pgp_sym_encrypt('María', 'mi_llave_secreta')),
+    ('Este', pgp_sym_encrypt('Ana', 'mi_llave_secreta')),
+    ('Oeste', pgp_sym_encrypt('Juan', 'mi_llave_secreta'));
+
+-- Paso 4: Seleccionar y Desencriptar los Datos
+SELECT 
+    Region, 
+    pgp_sym_decrypt(Gerente, 'mi_llave_secreta')::TEXT AS Gerente_desencriptado
+FROM 
+    Usuarios;
+14//////////
+CREATE VIEW vista_ID AS
+SELECT ID_de_fila FROM Ordenes;
+
+GRANT SELECT ON vista_ID TO Jeison;
+REVOKE ALL ON Ordenes FROM Jeison;
+
+SET ROLE Jeison;
+
+SELECT * FROM vista_ID;
+15/////////
+CREATE VIEW vista_Columna AS
+SELECT Categoria_de_producto FROM Ordenes;
+
+GRANT SELECT ON vista_Columna TO Jazztin;
+REVOKE ALL ON Ordenes FROM Jazztin;
+
+SET ROLE Jazztin;
+
+SELECT * FROM vista_Columna;
+17////////
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO Christhian;
+18//////
+CREATE OR REPLACE FUNCTION aplicar_validacion_filtrado_ordenes() RETURNS TRIGGER AS $$
+BEGIN
+    -- Aplicar validación y filtrado al texto
+    NEW.Nombre_del_cliente := validar_filtrar_texto(NEW.Nombre_del_cliente);
+    NEW.Modo_de_envio := validar_filtrar_texto(NEW.Modo_de_envio);
+    NEW.Segmento_de_clientes := validar_filtrar_texto(NEW.Segmento_de_clientes);
+    NEW.Categoria_de_producto := validar_filtrar_texto(NEW.Categoria_de_producto);
+    NEW.Subcategoria_de_producto := validar_filtrar_texto(NEW.Subcategoria_de_producto);
+    NEW.Contenedor_de_producto := validar_filtrar_texto(NEW.Contenedor_de_producto);
+    NEW.Nombre_del_producto := validar_filtrar_texto(NEW.Nombre_del_producto);
+    NEW.Pais := validar_filtrar_texto(NEW.Pais);
+    NEW.Region := validar_filtrar_texto(NEW.Region);
+    NEW.Estado_o_Provincia := validar_filtrar_texto(NEW.Estado_o_Provincia);
+    NEW.Ciudad := validar_filtrar_texto(NEW.Ciudad);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+-- Trigger para la tabla Ordenes
+CREATE TRIGGER trigger_validacion_filtrado_ordenes
+BEFORE INSERT OR UPDATE ON Ordenes
+FOR EACH ROW
+EXECUTE FUNCTION aplicar_validacion_filtrado_ordenes();
+
+-- Función y Trigger para la tabla Usuarios
+CREATE OR REPLACE FUNCTION aplicar_validacion_filtrado_usuarios() RETURNS TRIGGER AS $$
+BEGIN
+    NEW.Gerente := validar_filtrar_texto(NEW.Gerente);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_validacion_filtrado_usuarios
+BEFORE INSERT OR UPDATE ON Usuarios
+FOR EACH ROW
+EXECUTE FUNCTION aplicar_validacion_filtrado_usuarios();
+19////////////
+CREATE OR REPLACE FUNCTION validar_datos_ordenes() RETURNS TRIGGER AS $$
+BEGIN
+    -- Validar números positivos
+    IF NEW.Descuento < 0 OR NEW.Precio_unitario < 0 OR NEW.Costo_de_envio < 0 OR NEW.Ganancia < 0 OR NEW.Ventas < 0 THEN
+        RAISE EXCEPTION 'Los valores numéricos no pueden ser negativos';
+    END IF;
+
+    -- Validar longitud máxima de texto
+    IF LENGTH(NEW.Nombre_del_cliente) > 50 THEN
+        RAISE EXCEPTION 'El nombre del cliente no puede tener más de 50 caracteres';
+    END IF;
+
+    -- Filtrar texto para caracteres maliciosos
+    NEW.Prioridad_de_pedido := validar_filtrar_texto(NEW.Prioridad_de_pedido);
+    NEW.Nombre_del_cliente := validar_filtrar_texto(NEW.Nombre_del_cliente);
+    NEW.Modo_de_envio := validar_filtrar_texto(NEW.Modo_de_envio);
+    NEW.Segmento_de_clientes := validar_filtrar_texto(NEW.Segmento_de_clientes);
+    NEW.Categoria_de_producto := validar_filtrar_texto(NEW.Categoria_de_producto);
+    NEW.Subcategoria_de_producto := validar_filtrar_texto(NEW.Subcategoria_de_producto);
+    NEW.Contenedor_de_producto := validar_filtrar_texto(NEW.Contenedor_de_producto);
+    NEW.Nombre_del_producto := validar_filtrar_texto(NEW.Nombre_del_producto);
+    NEW.Pais := validar_filtrar_texto(NEW.Pais);
+    NEW.Estado_o_Provincia := validar_filtrar_texto(NEW.Estado_o_Provincia);
+    NEW.Ciudad := validar_filtrar_texto(NEW.Ciudad);
+    NEW.Region := validar_filtrar_texto(NEW.Region);
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+-- Trigger para la tabla Ordenes
+CREATE TRIGGER trigger_validacion_datos_ordenes
+BEFORE INSERT OR UPDATE ON Ordenes
+FOR EACH ROW
+EXECUTE FUNCTION validar_datos_ordenes();
+20///////////////
+-- Paso 1: Crear la Tabla de Auditoría
+CREATE TABLE auditoria (
+    id SERIAL PRIMARY KEY,
+    tabla TEXT,
+    operacion TEXT,
+    fecha TIMESTAMPTZ DEFAULT current_timestamp,
+    usuario TEXT,
+    datos_anteriores JSONB,
+    datos_nuevos JSONB
+);
+
+-- Paso 2: Crear la Función de Auditoría
+CREATE OR REPLACE FUNCTION registrar_auditoria() RETURNS TRIGGER AS $$
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        INSERT INTO auditoria (tabla, operacion, usuario, datos_nuevos)
+        VALUES (TG_TABLE_NAME, TG_OP, current_user, row_to_json(NEW)::jsonb);
+    ELSIF TG_OP = 'UPDATE' THEN
+        INSERT INTO auditoria (tabla, operacion, usuario, datos_anteriores, datos_nuevos)
+        VALUES (TG_TABLE_NAME, TG_OP, current_user, row_to_json(OLD)::jsonb, row_to_json(NEW)::jsonb);
+    ELSIF TG_OP = 'DELETE' THEN
+        INSERT INTO auditoria (tabla, operacion, usuario, datos_anteriores)
+        VALUES (TG_TABLE_NAME, TG_OP, current_user, row_to_json(OLD)::jsonb);
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Paso 3: Crear los Triggers de Auditoría
+-- Trigger para la tabla Usuarios
+CREATE TRIGGER auditoria_usuarios
+AFTER INSERT OR UPDATE OR DELETE ON Usuarios
+FOR EACH ROW
+EXECUTE FUNCTION registrar_auditoria();
+
+-- Trigger para la tabla Ordenes
+CREATE TRIGGER auditoria_ordenes
+AFTER INSERT OR UPDATE OR DELETE ON Ordenes
+FOR EACH ROW
+EXECUTE FUNCTION registrar_auditoria();
+
+-- Trigger para la tabla Dev
+CREATE TRIGGER auditoria_dev
+AFTER INSERT OR UPDATE OR DELETE ON Dev
+FOR EACH ROW
+EXECUTE FUNCTION registrar_auditoria();
+21//////////////
+-- Ajustar los parámetros de memoria
+ALTER SYSTEM SET shared_buffers = '2GB';
+ALTER SYSTEM SET work_mem = '64MB';
+ALTER SYSTEM SET maintenance_work_mem = '512MB';
+ALTER SYSTEM SET effective_cache_size = '6GB';
+
+-- Ajustar los parámetros de disco
+ALTER SYSTEM SET max_wal_size = '4GB';
+ALTER SYSTEM SET min_wal_size = '1GB';
+ALTER SYSTEM SET checkpoint_completion_target = 0.7;
+ALTER SYSTEM SET random_page_cost = 1.1;
+
+-- Aplicar cambios
+SELECT pg_reload_conf();
+23///////////////////
+-- Crear la Función de Respaldo
+CREATE OR REPLACE FUNCTION backup_database()
+RETURNS VOID AS $$
+DECLARE
+    backup_cmd TEXT;
+BEGIN
+    backup_cmd := 'pg_dump -U ' || current_user || ' -F c -b -v -f C:\Users\cjazz\Documents\2024-II\Base de datos II\Respaldo' || TO_CHAR(NOW(), 'YYYYMMDDHH24MISS') || '.dump BDifd';
+    PERFORM dblink_exec('dbname=mydb', 'SELECT shell(''' || backup_cmd || ''')');
+END;
+$$ LANGUAGE plpgsql;
+
+-- Crear la Función para Ejecutar el Backup si Corresponde
+CREATE OR REPLACE FUNCTION ejecutar_backup_si_corresponde()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF (current_timestamp::time >= '08:00:00'::time AND current_timestamp::time < '08:01:00'::time) AND
+       (EXTRACT(DOW FROM current_timestamp) = 1) THEN -- Lunes a las 8 AM
+        PERFORM backup_database();
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Crear el Trigger Asociado con la Tabla Usuarios
+CREATE TRIGGER trigger_backup
+AFTER INSERT OR UPDATE ON Usuarios
+FOR EACH ROW
+EXECUTE FUNCTION ejecutar_backup_si_corresponde();
+24////////////
+-- Restaurar los datos desde un archivo CSV
+COPY Usuarios (Region, Gerente)
+FROM 'C:\Users\cjazz\Documents\2024-II\Base de datos II\3 tablas\Usuarios.csv'
+DELIMITER ','
+CSV HEADER;
+27//////////////////
+-- Crear la Función para Otorgar y Revocar Permisos
+CREATE OR REPLACE FUNCTION otorgar_permisos_temporales(
+    p_usuario TEXT,
+    p_tabla TEXT,
+    p_duracion INTERVAL
+) RETURNS VOID AS $$
+DECLARE
+    v_comando_otorgar TEXT;
+    v_comando_revocar TEXT;
+    v_start_time TIMESTAMPTZ := NOW();
+BEGIN
+    -- Otorgar permisos
+    v_comando_otorgar := 'GRANT SELECT, INSERT, UPDATE, DELETE ON ' || p_tabla || ' TO ' || p_usuario;
+    EXECUTE v_comando_otorgar;
+
+    -- Esperar el tiempo especificado
+    PERFORM pg_sleep(EXTRACT(EPOCH FROM p_duracion)::INT);
+
+    -- Revocar permisos
+    v_comando_revocar := 'REVOKE SELECT, INSERT, UPDATE, DELETE ON ' || p_tabla || ' FROM ' || p_usuario;
+    EXECUTE v_comando_revocar;
+
+    -- Registrar la acción
+    RAISE NOTICE 'Permisos otorgados a % para la tabla % a las %, y revocados a las %', p_usuario, p_tabla, v_start_time, NOW();
+END;
+$$ LANGUAGE plpgsql;
+
+-- Ejecutar la Función para Otorgar Permisos Temporales
+SELECT otorgar_permisos_temporales('Christhian', 'Usuarios', INTERVAL '1 hour');
+SELECT otorgar_permisos_temporales('Christhian', 'Ordenes', INTERVAL '1 hour');
+SELECT otorgar_permisos_temporales('Christhian', 'Dev', INTERVAL '1 hour');
+
+
+
